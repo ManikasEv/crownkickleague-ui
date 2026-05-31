@@ -21,6 +21,7 @@ function AuthPage() {
   const [verificationCode, setVerificationCode] = useState('')
   const [awaitingVerification, setAwaitingVerification] = useState(false)
   const [awaitingLoginCode, setAwaitingLoginCode] = useState(false)
+  const [loginVerificationMode, setLoginVerificationMode] = useState(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
@@ -77,6 +78,27 @@ function AuthPage() {
             strategy: 'email_code',
             emailAddressId: emailCodeFactor.emailAddressId,
           })
+          setLoginVerificationMode('email_code')
+          setAwaitingLoginCode(true)
+          return false
+        }
+      }
+
+      if (result.status === 'needs_second_factor') {
+        const supportsTotp = result.supportedSecondFactors?.some(
+          (factor) => factor.strategy === 'totp',
+        )
+        if (supportsTotp) {
+          setLoginVerificationMode('totp')
+          setAwaitingLoginCode(true)
+          return false
+        }
+
+        const supportsBackupCode = result.supportedSecondFactors?.some(
+          (factor) => factor.strategy === 'backup_code',
+        )
+        if (supportsBackupCode) {
+          setLoginVerificationMode('backup_code')
           setAwaitingLoginCode(true)
           return false
         }
@@ -141,10 +163,28 @@ function AuthPage() {
       throw new Error('Clerk is loading')
     }
 
-    const verified = await signIn.attemptFirstFactor({
-      strategy: 'email_code',
-      code: verificationCode.trim(),
-    })
+    const code = verificationCode.trim()
+    const verified =
+      loginVerificationMode === 'email_code'
+        ? await signIn.attemptFirstFactor({
+            strategy: 'email_code',
+            code,
+          })
+        : loginVerificationMode === 'totp'
+        ? await signIn.attemptSecondFactor({
+            strategy: 'totp',
+            code,
+          })
+        : loginVerificationMode === 'backup_code'
+        ? await signIn.attemptSecondFactor({
+            strategy: 'backup_code',
+            code,
+          })
+        : null
+
+    if (!verified) {
+      throw new Error('Unsupported verification method. Check your Clerk sign-in settings.')
+    }
 
     if (verified.status !== 'complete') {
       throw new Error('Verification is not complete yet. Please check the email code and try again.')
@@ -192,7 +232,11 @@ function AuthPage() {
           {isRegister && awaitingVerification
             ? 'Enter the email verification code sent by Clerk.'
             : !isRegister && awaitingLoginCode
-            ? 'Enter the login verification code sent to your email.'
+            ? loginVerificationMode === 'totp'
+              ? 'Enter the 6-digit code from your authenticator app.'
+              : loginVerificationMode === 'backup_code'
+              ? 'Enter one of your Clerk backup codes.'
+              : 'Enter the login verification code sent to your email.'
             : isRegister
             ? 'Register for the friendliest World Cup guessing game.'
             : 'Sign in to continue your World Cup picks.'}
@@ -308,6 +352,7 @@ function AuthPage() {
             setError('')
             setAwaitingVerification(false)
             setAwaitingLoginCode(false)
+            setLoginVerificationMode(null)
             setVerificationCode('')
             setMode(isRegister ? 'login' : 'register')
           }}
