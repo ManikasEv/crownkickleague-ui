@@ -156,7 +156,7 @@ function AuthPage() {
             : 'Sign in to continue your World Cup picks.'}
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+        <form className="mt-6 space-y-4" onSubmit={onSubmit} autoComplete="off">
           {isRegister && !awaitingVerification && (
             <div>
               <label htmlFor="username" className="mb-1 block text-sm text-blue-100">
@@ -164,6 +164,9 @@ function AuthPage() {
               </label>
               <input
                 id="username"
+                name="crownkick-username"
+                autoComplete="off"
+                spellCheck={false}
                 className="w-full rounded-lg border border-blue-900/80 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/30"
                 placeholder="unique_username"
                 value={form.username}
@@ -180,7 +183,12 @@ function AuthPage() {
               </label>
               <input
                 id="email"
+                name="crownkick-email"
                 type="email"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                spellCheck={false}
                 className="w-full rounded-lg border border-blue-900/80 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/30"
                 placeholder="user@example.com"
                 value={form.email}
@@ -197,7 +205,11 @@ function AuthPage() {
               </label>
               <input
                 id="password"
+                name="crownkick-password"
                 type="password"
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 className="w-full rounded-lg border border-blue-900/80 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/30"
                 placeholder="Secretpass"
                 value={form.password}
@@ -214,6 +226,8 @@ function AuthPage() {
               </label>
               <input
                 id="verificationCode"
+                name="crownkick-verification-code"
+                autoComplete="one-time-code"
                 className="w-full rounded-lg border border-blue-900/80 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/30"
                 placeholder="123456"
                 value={verificationCode}
