@@ -1,0 +1,2 @@
+/api/*  https://crownkickleague-server.vercel.app/api/:splat  200
+/*      /index.html                                           200
