@@ -22,6 +22,7 @@ function AuthPage() {
   const [awaitingVerification, setAwaitingVerification] = useState(false)
   const [awaitingLoginCode, setAwaitingLoginCode] = useState(false)
   const [loginVerificationMode, setLoginVerificationMode] = useState(null)
+  const [loginMethod, setLoginMethod] = useState('password')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
@@ -112,6 +113,40 @@ function AuthPage() {
     return true
   }
 
+  async function signInWithEmailCode(email) {
+    if (!isLoaded || !signIn) throw new Error('Clerk is loading')
+
+    const result = await signIn.create({
+      identifier: email.trim().toLowerCase(),
+    })
+
+    if (result.status === 'complete') {
+      await setActive({ session: result.createdSessionId })
+      await syncAuthenticatedUser()
+      return true
+    }
+
+    if (result.status === 'needs_first_factor') {
+      const emailCodeFactor = result.supportedFirstFactors?.find(
+        (factor) => factor.strategy === 'email_code' && factor.emailAddressId,
+      )
+
+      if (!emailCodeFactor?.emailAddressId) {
+        throw new Error('Email code sign-in is not available for this account.')
+      }
+
+      await signIn.prepareFirstFactor({
+        strategy: 'email_code',
+        emailAddressId: emailCodeFactor.emailAddressId,
+      })
+      setLoginVerificationMode('email_code')
+      setAwaitingLoginCode(true)
+      return false
+    }
+
+    throw new Error('Unable to start email code login. Please try password login.')
+  }
+
   async function handleRegister() {
     if (!isLoaded || !signUp) {
       throw new Error('Clerk is loading')
@@ -152,7 +187,10 @@ function AuthPage() {
   }
 
   async function handleLogin() {
-    const complete = await signInWithClerk(form.email, form.password)
+    const complete =
+      loginMethod === 'email_code'
+        ? await signInWithEmailCode(form.email)
+        : await signInWithClerk(form.email, form.password)
     if (complete) {
       navigate('/dashboard')
     }
@@ -284,7 +322,40 @@ function AuthPage() {
             </div>
           )}
 
-          {!awaitingVerification && !awaitingLoginCode && (
+          {!isRegister && !awaitingLoginCode && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('password')
+                  setError('')
+                }}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  loginMethod === 'password'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-800 text-blue-100 hover:bg-slate-700'
+                }`}
+              >
+                Password login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('email_code')
+                  setError('')
+                }}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  loginMethod === 'email_code'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-800 text-blue-100 hover:bg-slate-700'
+                }`}
+              >
+                Email code login
+              </button>
+            </div>
+          )}
+
+          {!awaitingVerification && !awaitingLoginCode && (isRegister || loginMethod === 'password') && (
             <div>
               <label htmlFor="password" className="mb-1 block text-sm text-blue-100">
                 Password
@@ -308,7 +379,13 @@ function AuthPage() {
           {(isRegister && awaitingVerification) || (!isRegister && awaitingLoginCode) ? (
             <div>
               <label htmlFor="verificationCode" className="mb-1 block text-sm text-blue-100">
-                Email verification code
+                {isRegister
+                  ? 'Email verification code'
+                  : loginVerificationMode === 'totp'
+                  ? 'Authenticator code'
+                  : loginVerificationMode === 'backup_code'
+                  ? 'Backup code'
+                  : 'Email login code'}
               </label>
               <input
                 id="verificationCode"
@@ -353,6 +430,7 @@ function AuthPage() {
             setAwaitingVerification(false)
             setAwaitingLoginCode(false)
             setLoginVerificationMode(null)
+            setLoginMethod('password')
             setVerificationCode('')
             setMode(isRegister ? 'login' : 'register')
           }}
