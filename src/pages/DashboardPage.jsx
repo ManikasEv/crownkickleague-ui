@@ -363,11 +363,11 @@ function DashboardContent() {
       : 'Manage Teams'
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900 text-slate-100">
-      <div className="flex min-h-screen w-full">
+    <main className="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900 text-slate-100">
+      <div className="flex min-h-screen w-full overflow-x-hidden">
         <SideMenu items={menuItems} activeTab={activeTab} onChangeTab={handleChangeTab} onLogout={handleLogout} className="hidden w-72 md:flex" />
 
-        <section className="flex flex-1 flex-col">
+        <section className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-10 border-b border-blue-900/60 bg-slate-950/90 px-4 py-3 backdrop-blur md:px-8">
             <div className="flex items-center justify-between">
               <button
@@ -377,15 +377,17 @@ function DashboardContent() {
               >
                 {mobileMenuOpen ? 'Close' : 'Menu'}
               </button>
-              <h1 className="text-lg font-semibold text-white md:text-2xl">{currentTitle}</h1>
-              <p className="text-xs text-blue-100/80 md:text-sm">@{data?.user?.username || 'player'}</p>
+              <h1 className="px-2 text-lg font-semibold text-white md:text-2xl">{currentTitle}</h1>
+              <p className="max-w-[7.5rem] truncate text-right text-xs text-blue-100/80 md:max-w-none md:text-sm">
+                @{data?.user?.username || 'player'}
+              </p>
             </div>
           </header>
 
           {mobileMenuOpen && (
             <div className="md:hidden">
               <div className="fixed inset-0 z-20 bg-black/40" onClick={() => setMobileMenuOpen(false)} />
-              <div className="fixed inset-y-0 left-0 z-30 w-72">
+              <div className="fixed inset-y-0 left-0 z-30 w-[82vw] max-w-[18rem]">
                 <SideMenu
                   items={menuItems}
                   activeTab={activeTab}
@@ -399,7 +401,7 @@ function DashboardContent() {
             </div>
           )}
 
-          <div className="flex-1 p-4 md:p-8">
+          <div className="min-w-0 flex-1 p-3 sm:p-4 md:p-8">
             {loading && <p className="text-blue-100/90">Loading dashboard...</p>}
             {error && <p className="text-red-400">{error}</p>}
             {!error && actionError && <p className="mb-4 text-red-400">{actionError}</p>}

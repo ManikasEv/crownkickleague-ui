@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { getTeamFlag } from '../../../lib/flags.js'
+import { getTeamFlagCode, getTeamFlagUrl } from '../../../lib/flags.js'
 
 function BonusWinnerView({ bonusData, onSave, saving }) {
   const [selectedTeam, setSelectedTeam] = useState(bonusData?.prediction?.predictedTeam || '')
@@ -34,7 +34,7 @@ function BonusWinnerView({ bonusData, onSave, saving }) {
           <option value="">Select a country...</option>
           {teams.map((team) => (
             <option key={team} value={team}>
-              {`${getTeamFlag(team)} ${team}`.trim()}
+              {`${getTeamFlagCode(team) || ''} ${team}`.trim()}
             </option>
           ))}
         </select>
@@ -52,7 +52,16 @@ function BonusWinnerView({ bonusData, onSave, saving }) {
       {bonusData?.prediction && (
         <div className="mt-6 rounded-xl border border-blue-900/60 bg-slate-950/40 p-4 text-sm text-blue-100/90">
           <p>
-            Your pick: <strong>{bonusData.prediction.predictedTeam}</strong>
+            Your pick:{' '}
+            {getTeamFlagUrl(bonusData.prediction.predictedTeam) ? (
+              <img
+                src={getTeamFlagUrl(bonusData.prediction.predictedTeam)}
+                alt={`${bonusData.prediction.predictedTeam} flag`}
+                className="mr-1 inline-block h-3 w-5 rounded-[2px] object-cover align-middle"
+                loading="lazy"
+              />
+            ) : null}
+            <strong>{bonusData.prediction.predictedTeam}</strong>
           </p>
           <p className="mt-1">
             Potential points: <strong>{bonusData.prediction.potentialPoints}</strong>

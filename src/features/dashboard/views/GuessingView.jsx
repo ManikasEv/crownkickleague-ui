@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { getTeamFlag } from '../../../lib/flags.js'
+import { getTeamFlagCode, getTeamFlagUrl } from '../../../lib/flags.js'
 
 function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSyncLive, onOpenBonus, syncingLive }) {
   const [savingMatchId, setSavingMatchId] = useState(null)
@@ -39,6 +39,22 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
 
   function isFinished(match) {
     return String(match?.status || '').toLowerCase() === 'finished'
+  }
+
+  function Flag({ teamName }) {
+    const url = getTeamFlagUrl(teamName)
+    const code = getTeamFlagCode(teamName)
+    if (!url) {
+      return <span className="mr-1 inline-block min-w-6 text-[10px] uppercase text-blue-200/70">{code || ''}</span>
+    }
+    return (
+      <img
+        src={url}
+        alt={`${teamName} flag`}
+        className="mr-1 inline-block h-3 w-5 rounded-[2px] object-cover align-middle"
+        loading="lazy"
+      />
+    )
   }
 
   function setDraft(matchId, field, value) {
@@ -81,8 +97,8 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
   }
 
   return (
-    <section className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-6">
-      <h2 className="text-2xl font-semibold text-white">Guessing Bracket</h2>
+    <section className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-4 sm:p-6">
+      <h2 className="text-xl font-semibold text-white sm:text-2xl">Guessing Bracket</h2>
       <p className="mt-1 text-sm text-blue-100/80">
         Choose one mode per match: <strong>1 / X / 2 for 1 point</strong> or <strong>Exact score for 3 points</strong>.
       </p>
@@ -95,30 +111,30 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
           Editing closes at: {matchdayData?.lockAt ? new Date(matchdayData.lockAt).toLocaleString() : 'N/A'}
         </p>
       )}
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => onChangeMatchday((matchdayData?.matchday || 1) - 1)}
           disabled={(matchdayData?.matchday || 1) <= 1}
-          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-sm font-semibold text-blue-100 disabled:opacity-40"
+          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-100 disabled:opacity-40 sm:text-sm"
         >
           ← Previous day
         </button>
-        <p className="rounded-full border border-blue-500/40 bg-slate-900/80 px-3 py-1 text-sm text-blue-100">
+        <p className="rounded-full border border-blue-500/40 bg-slate-900/80 px-3 py-1 text-xs text-blue-100 sm:text-sm">
           Matchday {matchdayData?.matchday || 1} / {matchdayData?.maxMatchday || 1}
         </p>
         <button
           type="button"
           onClick={() => onChangeMatchday((matchdayData?.matchday || 1) + 1)}
           disabled={(matchdayData?.matchday || 1) >= (matchdayData?.maxMatchday || 1)}
-          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-sm font-semibold text-blue-100 disabled:opacity-40"
+          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-100 disabled:opacity-40 sm:text-sm"
         >
           Next day →
         </button>
         <button
           type="button"
           onClick={onOpenBonus}
-          className="rounded-full border border-violet-400/70 bg-violet-600/20 px-3 py-1 text-sm font-semibold text-violet-100"
+          className="rounded-full border border-violet-400/70 bg-violet-600/20 px-3 py-1 text-xs font-semibold text-violet-100 sm:text-sm"
         >
           Winner bonus
         </button>
@@ -126,7 +142,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
           type="button"
           onClick={onSyncLive}
           disabled={Boolean(syncingLive)}
-          className="ml-auto rounded-full border border-emerald-400/70 bg-emerald-600/20 px-3 py-1 text-sm font-semibold text-emerald-100 disabled:opacity-40"
+          className="w-full rounded-full border border-emerald-400/70 bg-emerald-600/20 px-3 py-1 text-xs font-semibold text-emerald-100 disabled:opacity-40 sm:ml-auto sm:w-auto sm:text-sm"
         >
           {syncingLive ? 'Syncing...' : 'Sync Live Matches'}
         </button>
@@ -148,11 +164,13 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                 <span>#{match.matchOrder}</span>
                 <span className="capitalize">{match.stage.replaceAll('_', ' ')}</span>
               </div>
-              <p className="mt-2 text-sm font-semibold">
-                <span className="mr-1">{getTeamFlag(match.homeTeam)}</span>
-                {match.homeTeam} vs <span className="mr-1">{getTeamFlag(match.awayTeam)}</span>
-                {match.awayTeam}
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1 text-sm font-semibold">
+                <Flag teamName={match.homeTeam} />
+                <span>{match.homeTeam}</span>
+                <span className="text-blue-200/90">vs</span>
+                <Flag teamName={match.awayTeam} />
+                <span>{match.awayTeam}</span>
+              </div>
               <p className="mt-1 text-xs text-blue-100/80">{formatKickoff(match.kickoffAt)}</p>
               <p className="text-xs capitalize">{formatStatus(match.status)}</p>
               {match.homeScore !== null && match.awayScore !== null && (
@@ -273,8 +291,9 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                   <td className="px-3 py-3 capitalize">{match.stage.replaceAll('_', ' ')}</td>
                   <td className="px-3 py-3">
                     <div className="font-medium">
-                      <span className="mr-1">{getTeamFlag(match.homeTeam)}</span>
-                      {match.homeTeam} vs <span className="mr-1">{getTeamFlag(match.awayTeam)}</span>
+                      <Flag teamName={match.homeTeam} />
+                      {match.homeTeam} vs
+                      <Flag teamName={match.awayTeam} />
                       {match.awayTeam}
                     </div>
                     {match.homeScore !== null && match.awayScore !== null && (

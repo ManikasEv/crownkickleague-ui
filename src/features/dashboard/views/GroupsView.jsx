@@ -1,4 +1,4 @@
-import { getTeamFlag } from '../../../lib/flags.js'
+import { getTeamFlagCode, getTeamFlagUrl } from '../../../lib/flags.js'
 
 function GroupsView({ groups, updatedAt, loading, onRefresh }) {
   return (
@@ -46,7 +46,18 @@ function GroupsView({ groups, updatedAt, loading, onRefresh }) {
                       {row.position}
                     </td>
                     <td className="px-2 py-2">
-                      <span className="mr-1">{getTeamFlag(row.teamName)}</span>
+                      {getTeamFlagUrl(row.teamName) ? (
+                        <img
+                          src={getTeamFlagUrl(row.teamName)}
+                          alt={`${row.teamName} flag`}
+                          className="mr-1 inline-block h-3 w-5 rounded-[2px] object-cover align-middle"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="mr-1 inline-block min-w-6 text-[10px] uppercase text-blue-200/70">
+                          {getTeamFlagCode(row.teamName) || ''}
+                        </span>
+                      )}
                       {row.teamName}
                     </td>
                     <td className="px-2 py-2 text-right font-semibold">{row.points}</td>

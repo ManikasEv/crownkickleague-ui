@@ -48,16 +48,12 @@ const TEAM_FLAG_MAP = {
   "Saudi Arabia": "SA",
 };
 
-function toFlagEmoji(code) {
-  if (!code || code.length !== 2) return "";
-  return code
-    .toUpperCase()
-    .split("")
-    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
-    .join("");
+export function getTeamFlagCode(teamName) {
+  return TEAM_FLAG_MAP[teamName] || null;
 }
 
-export function getTeamFlag(teamName) {
-  const code = TEAM_FLAG_MAP[teamName];
-  return toFlagEmoji(code);
+export function getTeamFlagUrl(teamName) {
+  const code = getTeamFlagCode(teamName);
+  if (!code) return null;
+  return `https://flagcdn.com/w20/${code.toLowerCase()}.png`;
 }
