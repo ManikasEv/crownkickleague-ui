@@ -20,6 +20,7 @@ function AuthPage() {
   const [form, setForm] = useState(initialForm)
   const [verificationCode, setVerificationCode] = useState('')
   const [awaitingVerification, setAwaitingVerification] = useState(false)
+  const [awaitingLoginCode, setAwaitingLoginCode] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,11 +67,27 @@ function AuthPage() {
     })
 
     if (result.status !== 'complete') {
-      throw new Error('Please complete required login steps (email verification or MFA).')
+      if (result.status === 'needs_first_factor') {
+        const emailCodeFactor = result.supportedFirstFactors?.find(
+          (factor) => factor.strategy === 'email_code' && factor.emailAddressId,
+        )
+
+        if (emailCodeFactor?.emailAddressId) {
+          await signIn.prepareFirstFactor({
+            strategy: 'email_code',
+            emailAddressId: emailCodeFactor.emailAddressId,
+          })
+          setAwaitingLoginCode(true)
+          return false
+        }
+      }
+
+      throw new Error('This account needs an extra login step in Clerk (email code or MFA).')
     }
 
     await setActive({ session: result.createdSessionId })
     await syncAuthenticatedUser()
+    return true
   }
 
   async function handleRegister() {
@@ -113,7 +130,28 @@ function AuthPage() {
   }
 
   async function handleLogin() {
-    await signInWithClerk(form.email, form.password)
+    const complete = await signInWithClerk(form.email, form.password)
+    if (complete) {
+      navigate('/dashboard')
+    }
+  }
+
+  async function handleLoginCodeVerification() {
+    if (!signIn) {
+      throw new Error('Clerk is loading')
+    }
+
+    const verified = await signIn.attemptFirstFactor({
+      strategy: 'email_code',
+      code: verificationCode.trim(),
+    })
+
+    if (verified.status !== 'complete') {
+      throw new Error('Verification is not complete yet. Please check the email code and try again.')
+    }
+
+    await setActive({ session: verified.createdSessionId })
+    await syncAuthenticatedUser()
     navigate('/dashboard')
   }
 
@@ -129,6 +167,8 @@ function AuthPage() {
         } else {
           await handleRegister()
         }
+      } else if (awaitingLoginCode) {
+        await handleLoginCodeVerification()
       } else {
         await handleLogin()
       }
@@ -151,6 +191,8 @@ function AuthPage() {
         <p className="mt-2 text-blue-100/80">
           {isRegister && awaitingVerification
             ? 'Enter the email verification code sent by Clerk.'
+            : !isRegister && awaitingLoginCode
+            ? 'Enter the login verification code sent to your email.'
             : isRegister
             ? 'Register for the friendliest World Cup guessing game.'
             : 'Sign in to continue your World Cup picks.'}
@@ -176,7 +218,7 @@ function AuthPage() {
             </div>
           )}
 
-          {!awaitingVerification && (
+          {!awaitingVerification && !awaitingLoginCode && (
             <div>
               <label htmlFor="email" className="mb-1 block text-sm text-blue-100">
                 Email
@@ -198,7 +240,7 @@ function AuthPage() {
             </div>
           )}
 
-          {!awaitingVerification && (
+          {!awaitingVerification && !awaitingLoginCode && (
             <div>
               <label htmlFor="password" className="mb-1 block text-sm text-blue-100">
                 Password
@@ -219,7 +261,7 @@ function AuthPage() {
             </div>
           )}
 
-          {isRegister && awaitingVerification && (
+          {(isRegister && awaitingVerification) || (!isRegister && awaitingLoginCode) ? (
             <div>
               <label htmlFor="verificationCode" className="mb-1 block text-sm text-blue-100">
                 Email verification code
@@ -235,7 +277,7 @@ function AuthPage() {
                 required
               />
             </div>
-          )}
+          ) : null}
 
           {/*
             Existing field blocks below are intentionally removed in verification step.
@@ -248,7 +290,15 @@ function AuthPage() {
             disabled={pending}
             className="w-full rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 py-2 font-semibold text-white transition hover:from-blue-600 hover:to-blue-400 disabled:opacity-60"
           >
-            {pending ? 'Please wait...' : isRegister ? (awaitingVerification ? 'Verify email code' : 'Create account') : 'Login'}
+            {pending
+              ? 'Please wait...'
+              : isRegister
+              ? awaitingVerification
+                ? 'Verify email code'
+                : 'Create account'
+              : awaitingLoginCode
+              ? 'Verify login code'
+              : 'Login'}
           </button>
         </form>
 
@@ -257,6 +307,7 @@ function AuthPage() {
           onClick={() => {
             setError('')
             setAwaitingVerification(false)
+            setAwaitingLoginCode(false)
             setVerificationCode('')
             setMode(isRegister ? 'login' : 'register')
           }}
