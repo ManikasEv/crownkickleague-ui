@@ -1,6 +1,8 @@
 import { useState } from 'react'
 
-function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSyncLive, syncingLive }) {
+import { getTeamFlag } from '../../../lib/flags.js'
+
+function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSyncLive, onOpenBonus, syncingLive }) {
   const [savingMatchId, setSavingMatchId] = useState(null)
   const [message, setMessage] = useState('')
   const matches = matchdayData?.matches || []
@@ -115,6 +117,13 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
         </button>
         <button
           type="button"
+          onClick={onOpenBonus}
+          className="rounded-full border border-violet-400/70 bg-violet-600/20 px-3 py-1 text-sm font-semibold text-violet-100"
+        >
+          Winner bonus
+        </button>
+        <button
+          type="button"
           onClick={onSyncLive}
           disabled={Boolean(syncingLive)}
           className="ml-auto rounded-full border border-emerald-400/70 bg-emerald-600/20 px-3 py-1 text-sm font-semibold text-emerald-100 disabled:opacity-40"
@@ -125,7 +134,118 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
 
       {message && <p className="mt-3 text-sm text-blue-100">{message}</p>}
 
-      <div className="mt-5 overflow-hidden rounded-xl border border-blue-900/60">
+      <div className="mt-5 md:hidden space-y-3">
+        {matches.map((match) => {
+          const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '1', home: '', away: '' }
+          const matchFinished = isFinished(match)
+          const disableInputs = Boolean(matchdayData?.locked || matchFinished)
+          return (
+            <article
+              key={match.id}
+              className={`rounded-xl border border-blue-900/60 p-3 ${matchFinished ? 'bg-slate-800/70 text-slate-300' : 'bg-slate-900/60 text-blue-100'}`}
+            >
+              <div className="flex items-center justify-between text-xs">
+                <span>#{match.matchOrder}</span>
+                <span className="capitalize">{match.stage.replaceAll('_', ' ')}</span>
+              </div>
+              <p className="mt-2 text-sm font-semibold">
+                <span className="mr-1">{getTeamFlag(match.homeTeam)}</span>
+                {match.homeTeam} vs <span className="mr-1">{getTeamFlag(match.awayTeam)}</span>
+                {match.awayTeam}
+              </p>
+              <p className="mt-1 text-xs text-blue-100/80">{formatKickoff(match.kickoffAt)}</p>
+              <p className="text-xs capitalize">{formatStatus(match.status)}</p>
+              {match.homeScore !== null && match.awayScore !== null && (
+                <p className="mt-1 text-xs text-emerald-300">
+                  {matchFinished ? 'Final' : 'Live'}: {match.homeScore} - {match.awayScore}
+                </p>
+              )}
+
+              <div className="mt-3 space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDraft(match.id, 'mode', 'outcome')}
+                    disabled={disableInputs}
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                      draft.mode === 'outcome' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-blue-100'
+                    } disabled:opacity-50`}
+                  >
+                    1/X/2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDraft(match.id, 'mode', 'score')}
+                    disabled={disableInputs}
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                      draft.mode === 'score' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-blue-100'
+                    } disabled:opacity-50`}
+                  >
+                    Score
+                  </button>
+                </div>
+
+                {draft.mode === 'outcome' ? (
+                  <div className="flex gap-2">
+                    {['1', 'X', '2'].map((outcome) => (
+                      <button
+                        key={outcome}
+                        type="button"
+                        onClick={() => setDraft(match.id, 'outcome', outcome)}
+                        disabled={disableInputs}
+                        className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                          draft.outcome === outcome
+                            ? 'bg-red-600 text-white'
+                            : 'bg-slate-800 text-blue-100 hover:bg-slate-700'
+                        } disabled:opacity-50`}
+                      >
+                        {outcome}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={draft.home}
+                      onChange={(event) => setDraft(match.id, 'home', event.target.value)}
+                      disabled={disableInputs}
+                      placeholder="0"
+                      className="w-16 rounded-md border border-blue-900/70 bg-white px-2 py-1 text-slate-900 disabled:opacity-50"
+                    />
+                    <span>-</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={draft.away}
+                      onChange={(event) => setDraft(match.id, 'away', event.target.value)}
+                      disabled={disableInputs}
+                      placeholder="0"
+                      className="w-16 rounded-md border border-blue-900/70 bg-white px-2 py-1 text-slate-900 disabled:opacity-50"
+                    />
+                  </div>
+                )}
+                {matchFinished && (
+                  <p className="text-xs text-emerald-300">
+                    Points awarded: {Number(match.prediction?.pointsAwarded ?? 0)}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={savingMatchId === match.id || disableInputs}
+                  onClick={() => handleSave(match.id, draft)}
+                  className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+                >
+                  {savingMatchId === match.id ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
+      <div className="mt-5 hidden md:block overflow-hidden rounded-xl border border-blue-900/60">
         <table className="w-full text-sm">
           <thead className="bg-blue-950/80 text-blue-100">
             <tr>
@@ -153,7 +273,9 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                   <td className="px-3 py-3 capitalize">{match.stage.replaceAll('_', ' ')}</td>
                   <td className="px-3 py-3">
                     <div className="font-medium">
-                      {match.homeTeam} vs {match.awayTeam}
+                      <span className="mr-1">{getTeamFlag(match.homeTeam)}</span>
+                      {match.homeTeam} vs <span className="mr-1">{getTeamFlag(match.awayTeam)}</span>
+                      {match.awayTeam}
                     </div>
                     {match.homeScore !== null && match.awayScore !== null && (
                       <div className="mt-1 text-xs text-emerald-300">

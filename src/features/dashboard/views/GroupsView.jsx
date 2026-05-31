@@ -1,3 +1,5 @@
+import { getTeamFlag } from '../../../lib/flags.js'
+
 function GroupsView({ groups, updatedAt, loading, onRefresh }) {
   return (
     <section className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-6">
@@ -43,7 +45,10 @@ function GroupsView({ groups, updatedAt, loading, onRefresh }) {
                     <td className={`px-2 py-2 font-semibold ${row.position <= 2 ? 'text-emerald-300' : 'text-blue-100/90'}`}>
                       {row.position}
                     </td>
-                    <td className="px-2 py-2">{row.teamName}</td>
+                    <td className="px-2 py-2">
+                      <span className="mr-1">{getTeamFlag(row.teamName)}</span>
+                      {row.teamName}
+                    </td>
                     <td className="px-2 py-2 text-right font-semibold">{row.points}</td>
                     <td className="px-2 py-2 text-right">{row.goalDifference}</td>
                   </tr>

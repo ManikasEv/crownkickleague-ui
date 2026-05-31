@@ -5,6 +5,7 @@ import { SignedIn, SignedOut, useAuth } from '@clerk/clerk-react'
 import { API_BASE_URL } from '../lib/api.js'
 import SideMenu from '../features/dashboard/components/SideMenu.jsx'
 import CreateTeamView from '../features/dashboard/views/CreateTeamView.jsx'
+import BonusWinnerView from '../features/dashboard/views/BonusWinnerView.jsx'
 import GlobalRankingView from '../features/dashboard/views/GlobalRankingView.jsx'
 import GroupsView from '../features/dashboard/views/GroupsView.jsx'
 import GuessingView from '../features/dashboard/views/GuessingView.jsx'
@@ -53,6 +54,8 @@ function DashboardContent() {
   const [liveMatchesUpdatedAt, setLiveMatchesUpdatedAt] = useState(null)
   const [liveMatchesLoading, setLiveMatchesLoading] = useState(false)
   const [syncingLive, setSyncingLive] = useState(false)
+  const [savingBonus, setSavingBonus] = useState(false)
+  const [bonusData, setBonusData] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('ranking')
   const [rankingView, setRankingView] = useState('chooser')
@@ -141,6 +144,9 @@ function DashboardContent() {
     if (tabId === 'livescore' && liveMatches.length === 0) {
       void loadLiveMatches()
     }
+    if (tabId === 'winner-bonus' && !bonusData) {
+      void loadWinnerBonus()
+    }
   }
 
   const loadGroupsStandings = useCallback(async () => {
@@ -166,6 +172,15 @@ function DashboardContent() {
       setActionError(err?.message || 'Failed to load live matches.')
     } finally {
       setLiveMatchesLoading(false)
+    }
+  }, [fetchWithAuth])
+
+  const loadWinnerBonus = useCallback(async () => {
+    try {
+      const body = await fetchWithAuth('/api/guessing/bonus')
+      setBonusData(body)
+    } catch (err) {
+      setActionError(err?.message || 'Failed to load winner bonus.')
     }
   }, [fetchWithAuth])
 
@@ -252,6 +267,24 @@ function DashboardContent() {
     }
   }
 
+  async function handleSaveWinnerBonus(predictedTeam) {
+    setSavingBonus(true)
+    setActionError('')
+    try {
+      await fetchWithAuth('/api/guessing/bonus', {
+        method: 'POST',
+        body: JSON.stringify({ predictedTeam }),
+      })
+      await loadWinnerBonus()
+      const rankingBody = await fetchWithAuth('/api/rankings/global')
+      setGlobalRanking(rankingBody.entries || [])
+    } catch (err) {
+      setActionError(err?.message || 'Failed to save winner bonus.')
+    } finally {
+      setSavingBonus(false)
+    }
+  }
+
   async function handleCreateTeam(teamName) {
     setActionError('')
     const body = await fetchWithAuth('/api/teams', {
@@ -304,6 +337,7 @@ function DashboardContent() {
   const menuItems = [
     { id: 'ranking', label: 'Ranking' },
     { id: 'guessing', label: 'Guessing' },
+    { id: 'winner-bonus', label: 'Winner Bonus' },
     { id: 'livescore', label: 'LiveScore' },
     { id: 'groups', label: 'Groups' },
     { id: 'rules', label: 'Rules' },
@@ -316,6 +350,8 @@ function DashboardContent() {
       ? 'Ranking'
       : activeTab === 'guessing'
       ? 'Guessing'
+      : activeTab === 'winner-bonus'
+      ? 'Winner Bonus'
       : activeTab === 'groups'
       ? 'Groups'
       : activeTab === 'livescore'
@@ -404,7 +440,15 @@ function DashboardContent() {
                     onChangeMatchday={handleChangeGuessingMatchday}
                     onSavePrediction={handleSavePrediction}
                     onSyncLive={handleSyncLiveMatches}
+                    onOpenBonus={() => handleChangeTab('winner-bonus')}
                     syncingLive={syncingLive}
+                  />
+                )}
+                {activeTab === 'winner-bonus' && (
+                  <BonusWinnerView
+                    bonusData={bonusData}
+                    saving={savingBonus}
+                    onSave={handleSaveWinnerBonus}
                   />
                 )}
                 {activeTab === 'groups' && (
