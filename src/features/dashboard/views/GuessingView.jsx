@@ -35,6 +35,10 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
     return String(status).replaceAll('_', ' ')
   }
 
+  function isFinished(match) {
+    return String(match?.status || '').toLowerCase() === 'finished'
+  }
+
   function setDraft(matchId, field, value) {
     setDrafts((prev) => ({
       ...prev,
@@ -138,8 +142,13 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
           <tbody>
             {matches.map((match) => {
               const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '1', home: '', away: '' }
+              const matchFinished = isFinished(match)
+              const disableInputs = Boolean(matchdayData?.locked || matchFinished)
               return (
-                <tr key={match.id} className="border-t border-blue-900/50 text-blue-100/95">
+                <tr
+                  key={match.id}
+                  className={`border-t border-blue-900/50 ${matchFinished ? 'bg-slate-800/70 text-slate-300' : 'text-blue-100/95'}`}
+                >
                   <td className="px-3 py-3">#{match.matchOrder}</td>
                   <td className="px-3 py-3 capitalize">{match.stage.replaceAll('_', ' ')}</td>
                   <td className="px-3 py-3">
@@ -148,7 +157,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                     </div>
                     {match.homeScore !== null && match.awayScore !== null && (
                       <div className="mt-1 text-xs text-emerald-300">
-                        Live score: {match.homeScore} - {match.awayScore}
+                        {matchFinished ? 'Final score' : 'Live score'}: {match.homeScore} - {match.awayScore}
                       </div>
                     )}
                   </td>
@@ -178,18 +187,20 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                         <button
                           type="button"
                           onClick={() => setDraft(match.id, 'mode', 'outcome')}
+                          disabled={disableInputs}
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${
                             draft.mode === 'outcome' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-blue-100'
-                          }`}
+                          } disabled:opacity-50`}
                         >
                           1/X/2 (1 pt)
                         </button>
                         <button
                           type="button"
                           onClick={() => setDraft(match.id, 'mode', 'score')}
+                          disabled={disableInputs}
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${
                             draft.mode === 'score' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-blue-100'
-                          }`}
+                          } disabled:opacity-50`}
                         >
                           Exact score (3 pts)
                         </button>
@@ -202,11 +213,12 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                               key={outcome}
                               type="button"
                               onClick={() => setDraft(match.id, 'outcome', outcome)}
+                              disabled={disableInputs}
                               className={`rounded-md px-3 py-1 text-xs font-semibold ${
                                 draft.outcome === outcome
                                   ? 'bg-red-600 text-white'
                                   : 'bg-slate-800 text-blue-100 hover:bg-slate-700'
-                              }`}
+                              } disabled:opacity-50`}
                             >
                               {outcome}
                             </button>
@@ -219,8 +231,9 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                             min="0"
                             value={draft.home}
                             onChange={(event) => setDraft(match.id, 'home', event.target.value)}
+                            disabled={disableInputs}
                             placeholder="0"
-                            className="w-16 rounded-md border border-blue-900/70 bg-white px-2 py-1 text-slate-900"
+                            className="w-16 rounded-md border border-blue-900/70 bg-white px-2 py-1 text-slate-900 disabled:opacity-50"
                           />
                           <span>-</span>
                           <input
@@ -228,17 +241,23 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                             min="0"
                             value={draft.away}
                             onChange={(event) => setDraft(match.id, 'away', event.target.value)}
+                            disabled={disableInputs}
                             placeholder="0"
-                            className="w-16 rounded-md border border-blue-900/70 bg-white px-2 py-1 text-slate-900"
+                            className="w-16 rounded-md border border-blue-900/70 bg-white px-2 py-1 text-slate-900 disabled:opacity-50"
                           />
                         </div>
+                      )}
+                      {matchFinished && (
+                        <p className="text-xs text-emerald-300">
+                          Points awarded: {Number(match.prediction?.pointsAwarded ?? 0)}
+                        </p>
                       )}
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right">
                     <button
                       type="button"
-                      disabled={savingMatchId === match.id || matchdayData?.locked}
+                      disabled={savingMatchId === match.id || disableInputs}
                       onClick={() => handleSave(match.id, draft)}
                       className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
                     >

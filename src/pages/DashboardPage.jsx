@@ -11,6 +11,7 @@ import GuessingView from '../features/dashboard/views/GuessingView.jsx'
 import InvitesView from '../features/dashboard/views/InvitesView.jsx'
 import LiveScoreView from '../features/dashboard/views/LiveScoreView.jsx'
 import RankingHubView from '../features/dashboard/views/RankingHubView.jsx'
+import RulesView from '../features/dashboard/views/RulesView.jsx'
 import TeamRankingView from '../features/dashboard/views/TeamRankingView.jsx'
 
 const AUTO_LIVE_SYNC_MS = 30000
@@ -305,6 +306,7 @@ function DashboardContent() {
     { id: 'guessing', label: 'Guessing' },
     { id: 'livescore', label: 'LiveScore' },
     { id: 'groups', label: 'Groups' },
+    { id: 'rules', label: 'Rules' },
     { id: 'create-team', label: 'Manage Teams' },
     ...(invites.length ? [{ id: 'invites', label: `Invites (${invites.length})` }] : []),
   ]
@@ -318,6 +320,8 @@ function DashboardContent() {
       ? 'Groups'
       : activeTab === 'livescore'
       ? 'LiveScore'
+      : activeTab === 'rules'
+      ? 'Rules'
       : activeTab === 'invites'
       ? 'Invites'
       : 'Manage Teams'
@@ -419,6 +423,7 @@ function DashboardContent() {
                     onRefresh={loadLiveMatches}
                   />
                 )}
+                {activeTab === 'rules' && <RulesView />}
                 {activeTab === 'create-team' && (
                   <CreateTeamView
                     teams={teams}
