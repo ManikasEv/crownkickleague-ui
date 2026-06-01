@@ -44,6 +44,11 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
     return 'προγραμματισμένο'
   }
 
+  function formatGroupLabel(groupLabel) {
+    if (!groupLabel) return isGreek ? 'Χωρίς όμιλο' : 'No group'
+    return `${isGreek ? 'Όμιλος' : 'Group'} ${String(groupLabel).toUpperCase()}`
+  }
+
   function isFinished(match) {
     return String(match?.status || '').toLowerCase() === 'finished'
   }
@@ -276,6 +281,11 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                 <span>#{match.matchOrder}</span>
                 <span className="capitalize">{tStage(match.stage, isGreek)}</span>
               </div>
+              {match.groupLabel && (
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-200/90">
+                  {formatGroupLabel(match.groupLabel)}
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-1 text-sm font-semibold">
                 <Flag teamName={match.homeTeam} />
                 <span>{tCountry(match.homeTeam, isGreek)}</span>
@@ -374,6 +384,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
               <th className="px-3 py-3 text-left">#</th>
                 <th className="px-3 py-3 text-left">{isGreek ? 'Φάση' : 'Stage'}</th>
                 <th className="px-3 py-3 text-left">{isGreek ? 'Ομάδες' : 'Teams'}</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Όμιλος' : 'Group'}</th>
                 <th className="px-3 py-3 text-left">{isGreek ? 'Ημερομηνία & Ώρα' : 'Date & Time'}</th>
                 <th className="px-3 py-3 text-left">{isGreek ? 'Κατάσταση' : 'Status'}</th>
                 <th className="px-3 py-3 text-left">{isGreek ? 'Αποδόσεις 1 / X / 2' : '1 / X / 2 Odds'}</th>
@@ -405,6 +416,9 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                         {matchFinished ? (isGreek ? 'Τελικό σκορ' : 'Final score') : isGreek ? 'Live σκορ' : 'Live score'}: {match.homeScore} - {match.awayScore}
                       </div>
                     )}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-indigo-200/90">
+                    {match.groupLabel ? formatGroupLabel(match.groupLabel) : '—'}
                   </td>
                   <td className="px-3 py-3 text-xs text-blue-100/90">{formatKickoff(match.kickoffAt)}</td>
                   <td className="px-3 py-3 capitalize">{formatStatus(match.status)}</td>
