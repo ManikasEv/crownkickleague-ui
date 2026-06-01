@@ -1,10 +1,13 @@
 import { useState } from 'react'
 
 import { getTeamFlagCode, getTeamFlagUrl } from '../../../lib/flags.js'
+import { isGreekLanguage, tCountry, tStage } from '../../../lib/localization.js'
 
 function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLive, onOpenBonus, syncingLive }) {
+  const isGreek = isGreekLanguage()
   const [savingAll, setSavingAll] = useState(false)
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState('info')
   const matches = matchdayData?.matches || []
   const [drafts, setDrafts] = useState(() => {
     const initial = {}
@@ -34,7 +37,11 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
 
   function formatStatus(status) {
     if (!status) return 'scheduled'
-    return String(status).replaceAll('_', ' ')
+    const normalized = String(status).toLowerCase()
+    if (!isGreek) return String(status).replaceAll('_', ' ')
+    if (normalized === 'live') return 'ζωντανά'
+    if (normalized === 'finished') return 'ολοκληρώθηκε'
+    return 'προγραμματισμένο'
   }
 
   function isFinished(match) {
@@ -107,8 +114,19 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
     )
   }
 
+  function getPendingChangesCount() {
+    return matches.filter((match) => {
+      const matchFinished = isFinished(match)
+      const disabled = Boolean(matchdayData?.locked || matchFinished)
+      if (disabled) return false
+      const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '', home: '', away: '' }
+      return isDraftDifferentFromPrediction(match, draft) && Boolean(buildPayload(match, draft))
+    }).length
+  }
+
   async function handleSaveAll() {
     setMessage('')
+    setMessageType('info')
     setSavingAll(true)
     try {
       const payloads = matches
@@ -126,32 +144,52 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
         .filter(Boolean)
 
       if (payloads.length === 0) {
-        setMessage('No new changes to save for this matchday.')
+        setMessageType('info')
+        setMessage(isGreek ? 'Δεν υπάρχουν νέες αλλαγές για αποθήκευση σε αυτή την αγωνιστική.' : 'No new changes to save for this matchday.')
         return
       }
 
       const result = await onSaveMatchday(payloads)
-      setMessage(`Saved ${result?.savedCount ?? payloads.length} prediction(s) for this matchday.`)
+      setMessageType('success')
+      setMessage(
+        isGreek
+          ? `Αποθηκεύτηκαν ${result?.savedCount ?? payloads.length} προβλέψεις για αυτή την αγωνιστική.`
+          : `Saved ${result?.savedCount ?? payloads.length} prediction(s) for this matchday.`,
+      )
     } catch (error) {
-      setMessage(error?.message || 'Failed to save matchday predictions.')
+      setMessageType('error')
+      setMessage(error?.message || (isGreek ? 'Αποτυχία αποθήκευσης προβλέψεων αγωνιστικής.' : 'Failed to save matchday predictions.'))
     } finally {
       setSavingAll(false)
     }
   }
 
+  const pendingChangesCount = getPendingChangesCount()
+
   return (
     <section className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-4 sm:p-6">
-      <h2 className="text-xl font-semibold text-white sm:text-2xl">Guessing Bracket</h2>
+      <h2 className="text-xl font-semibold text-white sm:text-2xl">{isGreek ? 'Πίνακας Προβλέψεων' : 'Guessing Bracket'}</h2>
       <p className="mt-1 text-sm text-blue-100/80">
-        Choose one mode per match: <strong>1 / X / 2 for 1 point</strong> or <strong>Exact score for 3 points</strong>.
+        {isGreek ? (
+          <>
+            Διάλεξε έναν τρόπο ανά ματς: <strong>1 / X / 2 για 1 πόντο</strong> ή <strong>Ακριβές σκορ για 3 πόντους</strong>.
+          </>
+        ) : (
+          <>
+            Choose one mode per match: <strong>1 / X / 2 for 1 point</strong> or <strong>Exact score for 3 points</strong>.
+          </>
+        )}
       </p>
       {matchdayData?.locked ? (
         <p className="mt-2 text-sm text-red-300">
-          Matchday locked: predictions closed 3 hours before first kickoff.
+          {isGreek
+            ? 'Η αγωνιστική κλείδωσε: οι προβλέψεις κλείνουν 3 ώρες πριν την πρώτη σέντρα.'
+            : 'Matchday locked: predictions closed 3 hours before first kickoff.'}
         </p>
       ) : (
         <p className="mt-2 text-xs text-blue-100/70">
-          Editing closes at: {matchdayData?.lockAt ? new Date(matchdayData.lockAt).toLocaleString() : 'N/A'}
+          {isGreek ? 'Η επεξεργασία κλείνει:' : 'Editing closes at:'}{' '}
+          {matchdayData?.lockAt ? new Date(matchdayData.lockAt).toLocaleString() : isGreek ? 'N/A' : 'N/A'}
         </p>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -159,47 +197,70 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
           type="button"
           onClick={() => onChangeMatchday((matchdayData?.matchday || 1) - 1)}
           disabled={(matchdayData?.matchday || 1) <= 1}
-          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-100 disabled:opacity-40 sm:text-sm"
+          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-100 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-500/30 active:scale-95 disabled:opacity-40 sm:text-sm"
         >
-          ← Previous day
+          {isGreek ? '← Προηγούμενη' : '← Previous day'}
         </button>
         <p className="rounded-full border border-blue-500/40 bg-slate-900/80 px-3 py-1 text-xs text-blue-100 sm:text-sm">
-          Matchday {matchdayData?.matchday || 1} / {matchdayData?.maxMatchday || 1}
+          {isGreek ? 'Αγωνιστική' : 'Matchday'} {matchdayData?.matchday || 1} / {matchdayData?.maxMatchday || 1}
         </p>
         <button
           type="button"
           onClick={() => onChangeMatchday((matchdayData?.matchday || 1) + 1)}
           disabled={(matchdayData?.matchday || 1) >= (matchdayData?.maxMatchday || 1)}
-          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-100 disabled:opacity-40 sm:text-sm"
+          className="rounded-full border border-blue-400/70 bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-100 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-500/30 active:scale-95 disabled:opacity-40 sm:text-sm"
         >
-          Next day →
+          {isGreek ? 'Επόμενη →' : 'Next day →'}
         </button>
         <button
           type="button"
           onClick={onOpenBonus}
-          className="rounded-full border border-violet-400/70 bg-violet-600/20 px-3 py-1 text-xs font-semibold text-violet-100 sm:text-sm"
+          className="rounded-full border border-violet-400/70 bg-violet-600/20 px-3 py-1 text-xs font-semibold text-violet-100 transition duration-200 hover:-translate-y-0.5 hover:bg-violet-500/30 active:scale-95 sm:text-sm"
         >
-          Winner bonus
+          {isGreek ? 'Bonus νικητή' : 'Winner bonus'}
         </button>
         <button
           type="button"
           onClick={handleSaveAll}
           disabled={Boolean(matchdayData?.locked || savingAll)}
-          className="rounded-full border border-blue-300/80 bg-blue-600/30 px-3 py-1 text-xs font-semibold text-blue-100 disabled:opacity-40 sm:text-sm"
+          className={`rounded-full border px-3 py-1 text-xs font-semibold text-blue-100 transition duration-200 active:scale-95 disabled:opacity-40 sm:text-sm ${
+            savingAll
+              ? 'animate-pulse border-cyan-300/80 bg-cyan-500/40 shadow-[0_0_0_2px_rgba(34,211,238,0.25)]'
+              : 'border-blue-300/80 bg-blue-600/30 hover:-translate-y-0.5 hover:bg-blue-500/40 hover:shadow-[0_0_0_2px_rgba(96,165,250,0.3)]'
+          }`}
         >
-          {savingAll ? 'Saving matchday...' : 'Save matchday predictions'}
+          {savingAll
+            ? isGreek
+              ? 'Αποθήκευση...'
+              : 'Saving matchday...'
+            : `${isGreek ? 'Αποθήκευση αγωνιστικής' : 'Save matchday predictions'}${
+                pendingChangesCount > 0 ? ` (${pendingChangesCount})` : ''
+              }`}
         </button>
         <button
           type="button"
           onClick={onSyncLive}
           disabled={Boolean(syncingLive)}
-          className="w-full rounded-full border border-emerald-400/70 bg-emerald-600/20 px-3 py-1 text-xs font-semibold text-emerald-100 disabled:opacity-40 sm:ml-auto sm:w-auto sm:text-sm"
+          className="w-full rounded-full border border-emerald-400/70 bg-emerald-600/20 px-3 py-1 text-xs font-semibold text-emerald-100 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-500/30 active:scale-95 disabled:opacity-40 sm:ml-auto sm:w-auto sm:text-sm"
         >
-          {syncingLive ? 'Syncing...' : 'Sync Live Matches'}
+          {syncingLive ? (isGreek ? 'Συγχρονισμός...' : 'Syncing...') : isGreek ? 'Συγχρονισμός Live Αγώνων' : 'Sync Live Matches'}
         </button>
       </div>
 
-      {message && <p className="mt-3 text-sm text-blue-100">{message}</p>}
+      {message && (
+        <p
+          className={`mt-3 rounded-lg border px-3 py-2 text-sm transition-all duration-300 ${
+            messageType === 'success'
+              ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-200'
+              : messageType === 'error'
+              ? 'border-red-400/60 bg-red-500/15 text-red-200'
+              : 'border-blue-400/60 bg-blue-500/15 text-blue-100'
+          }`}
+        >
+          {messageType === 'success' ? '✓ ' : messageType === 'error' ? '⚠ ' : '• '}
+          {message}
+        </p>
+      )}
 
       <div className="mt-5 md:hidden space-y-3">
         {matches.map((match) => {
@@ -213,20 +274,20 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
             >
               <div className="flex items-center justify-between text-xs">
                 <span>#{match.matchOrder}</span>
-                <span className="capitalize">{match.stage.replaceAll('_', ' ')}</span>
+                <span className="capitalize">{tStage(match.stage, isGreek)}</span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1 text-sm font-semibold">
                 <Flag teamName={match.homeTeam} />
-                <span>{match.homeTeam}</span>
+                <span>{tCountry(match.homeTeam, isGreek)}</span>
                 <span className="text-blue-200/90">vs</span>
                 <Flag teamName={match.awayTeam} />
-                <span>{match.awayTeam}</span>
+                <span>{tCountry(match.awayTeam, isGreek)}</span>
               </div>
               <p className="mt-1 text-xs text-blue-100/80">{formatKickoff(match.kickoffAt)}</p>
               <p className="text-xs capitalize">{formatStatus(match.status)}</p>
               {match.homeScore !== null && match.awayScore !== null && (
                 <p className="mt-1 text-xs text-emerald-300">
-                  {matchFinished ? 'Final' : 'Live'}: {match.homeScore} - {match.awayScore}
+                  {matchFinished ? (isGreek ? 'Τελικό' : 'Final') : isGreek ? 'Ζωντανά' : 'Live'}: {match.homeScore} - {match.awayScore}
                 </p>
               )}
 
@@ -297,7 +358,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                 )}
                 {matchFinished && (
                   <p className="text-xs text-emerald-300">
-                    Points awarded: {Number(match.prediction?.pointsAwarded ?? 0)}
+                    {isGreek ? 'Πόντοι που δόθηκαν' : 'Points awarded'}: {Number(match.prediction?.pointsAwarded ?? 0)}
                   </p>
                 )}
               </div>
@@ -311,13 +372,13 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
           <thead className="bg-blue-950/80 text-blue-100">
             <tr>
               <th className="px-3 py-3 text-left">#</th>
-              <th className="px-3 py-3 text-left">Stage</th>
-              <th className="px-3 py-3 text-left">Teams</th>
-              <th className="px-3 py-3 text-left">Date & Time</th>
-              <th className="px-3 py-3 text-left">Status</th>
-              <th className="px-3 py-3 text-left">1 / X / 2 Odds</th>
-              <th className="px-3 py-3 text-left">Your Guess</th>
-              <th className="px-3 py-3 text-right">Action</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Φάση' : 'Stage'}</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Ομάδες' : 'Teams'}</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Ημερομηνία & Ώρα' : 'Date & Time'}</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Κατάσταση' : 'Status'}</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Αποδόσεις 1 / X / 2' : '1 / X / 2 Odds'}</th>
+                <th className="px-3 py-3 text-left">{isGreek ? 'Η Πρόβλεψή Σου' : 'Your Guess'}</th>
+                <th className="px-3 py-3 text-right">{isGreek ? 'Ενέργεια' : 'Action'}</th>
             </tr>
           </thead>
           <tbody>
@@ -331,17 +392,17 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                   className={`border-t border-blue-900/50 ${matchFinished ? 'bg-slate-800/70 text-slate-300' : 'text-blue-100/95'}`}
                 >
                   <td className="px-3 py-3">#{match.matchOrder}</td>
-                  <td className="px-3 py-3 capitalize">{match.stage.replaceAll('_', ' ')}</td>
+                  <td className="px-3 py-3 capitalize">{tStage(match.stage, isGreek)}</td>
                   <td className="px-3 py-3">
                     <div className="font-medium">
                       <Flag teamName={match.homeTeam} />
-                      {match.homeTeam} vs
+                      {tCountry(match.homeTeam, isGreek)} vs
                       <Flag teamName={match.awayTeam} />
-                      {match.awayTeam}
+                      {tCountry(match.awayTeam, isGreek)}
                     </div>
                     {match.homeScore !== null && match.awayScore !== null && (
                       <div className="mt-1 text-xs text-emerald-300">
-                        {matchFinished ? 'Final score' : 'Live score'}: {match.homeScore} - {match.awayScore}
+                        {matchFinished ? (isGreek ? 'Τελικό σκορ' : 'Final score') : isGreek ? 'Live σκορ' : 'Live score'}: {match.homeScore} - {match.awayScore}
                       </div>
                     )}
                   </td>
@@ -362,7 +423,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                         )}
                       </div>
                     ) : (
-                      <span className="text-blue-200/60">N/A</span>
+                      <span className="text-blue-200/60">{isGreek ? 'Μ/Δ' : 'N/A'}</span>
                     )}
                   </td>
                   <td className="px-3 py-3">
@@ -376,7 +437,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                             draft.mode === 'outcome' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-blue-100'
                           } disabled:opacity-50`}
                         >
-                          1/X/2 (1 pt)
+                          {isGreek ? '1/X/2 (1 π.)' : '1/X/2 (1 pt)'}
                         </button>
                         <button
                           type="button"
@@ -386,7 +447,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                             draft.mode === 'score' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-blue-100'
                           } disabled:opacity-50`}
                         >
-                          Exact score (3 pts)
+                          {isGreek ? 'Ακριβές σκορ (3 π.)' : 'Exact score (3 pts)'}
                         </button>
                       </div>
 
@@ -433,13 +494,13 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
                       )}
                       {matchFinished && (
                         <p className="text-xs text-emerald-300">
-                          Points awarded: {Number(match.prediction?.pointsAwarded ?? 0)}
+                          {isGreek ? 'Πόντοι που δόθηκαν' : 'Points awarded'}: {Number(match.prediction?.pointsAwarded ?? 0)}
                         </p>
                       )}
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right text-xs text-blue-200/80">
-                    Matchday save
+                    {isGreek ? 'Αποθήκευση αγωνιστικής' : 'Matchday save'}
                   </td>
                 </tr>
               )

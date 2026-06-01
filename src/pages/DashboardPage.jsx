@@ -35,6 +35,7 @@ function toSafeErrorMessage(body, response) {
 
 function DashboardContent() {
   const { getToken, signOut } = useAuth()
+  const isGreek = typeof navigator !== 'undefined' && String(navigator.language || '').toLowerCase().startsWith('el')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
@@ -350,31 +351,47 @@ function DashboardContent() {
   }
 
   const menuItems = [
-    { id: 'ranking', label: 'Ranking' },
-    { id: 'guessing', label: 'Guessing' },
-    { id: 'winner-bonus', label: 'Winner Bonus' },
+    { id: 'ranking', label: isGreek ? 'Κατάταξη' : 'Ranking' },
+    { id: 'guessing', label: isGreek ? 'Προβλέψεις' : 'Guessing' },
+    { id: 'winner-bonus', label: isGreek ? 'Bonus Νικητή' : 'Winner Bonus' },
     { id: 'livescore', label: 'LiveScore' },
-    { id: 'groups', label: 'Groups' },
-    { id: 'rules', label: 'Rules' },
-    { id: 'create-team', label: 'Manage Teams' },
-    ...(invites.length ? [{ id: 'invites', label: `Invites (${invites.length})` }] : []),
+    { id: 'groups', label: isGreek ? 'Όμιλοι' : 'Groups' },
+    { id: 'rules', label: isGreek ? 'Κανόνες' : 'Rules' },
+    { id: 'create-team', label: isGreek ? 'Διαχείριση Ομάδων' : 'Manage Teams' },
+    ...(invites.length
+      ? [{ id: 'invites', label: isGreek ? `Προσκλήσεις (${invites.length})` : `Invites (${invites.length})` }]
+      : []),
   ]
 
   const currentTitle =
     activeTab === 'ranking'
-      ? 'Ranking'
+      ? isGreek
+        ? 'Κατάταξη'
+        : 'Ranking'
       : activeTab === 'guessing'
-      ? 'Guessing'
+      ? isGreek
+        ? 'Προβλέψεις'
+        : 'Guessing'
       : activeTab === 'winner-bonus'
-      ? 'Winner Bonus'
+      ? isGreek
+        ? 'Bonus Νικητή'
+        : 'Winner Bonus'
       : activeTab === 'groups'
-      ? 'Groups'
+      ? isGreek
+        ? 'Όμιλοι'
+        : 'Groups'
       : activeTab === 'livescore'
       ? 'LiveScore'
       : activeTab === 'rules'
-      ? 'Rules'
+      ? isGreek
+        ? 'Κανόνες'
+        : 'Rules'
       : activeTab === 'invites'
-      ? 'Invites'
+      ? isGreek
+        ? 'Προσκλήσεις'
+        : 'Invites'
+      : isGreek
+      ? 'Διαχείριση Ομάδων'
       : 'Manage Teams'
 
   return (
@@ -417,7 +434,7 @@ function DashboardContent() {
           )}
 
           <div className="min-w-0 flex-1 p-3 sm:p-4 md:p-8">
-            {loading && <p className="text-blue-100/90">Loading dashboard...</p>}
+            {loading && <p className="text-blue-100/90">{isGreek ? 'Φόρτωση πίνακα...' : 'Loading dashboard...'}</p>}
             {error && <p className="text-red-400">{error}</p>}
             {!error && actionError && <p className="mb-4 text-red-400">{actionError}</p>}
 
