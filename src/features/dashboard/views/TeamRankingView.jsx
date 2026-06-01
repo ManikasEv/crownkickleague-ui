@@ -1,13 +1,16 @@
+import { isGreekLanguage } from '../../../lib/localization.js'
+
 function TeamRankingView({ teams, selectedTeamId, onSelectTeam }) {
+  const isGreek = isGreekLanguage()
   const selectedTeam = teams.find((team) => team.id === selectedTeamId) || teams[0]
   const entries = selectedTeam?.members || []
 
   return (
     <section className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-6">
-      <h2 className="text-2xl font-semibold text-white">Team Ranking</h2>
+      <h2 className="text-2xl font-semibold text-white">{isGreek ? 'Κατάταξη Ομάδας' : 'Team Ranking'}</h2>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <label htmlFor="teamSelect" className="text-sm text-blue-100/80">
-          Team:
+          {isGreek ? 'Ομάδα:' : 'Team:'}
         </label>
         <select
           id="teamSelect"
@@ -28,8 +31,8 @@ function TeamRankingView({ teams, selectedTeamId, onSelectTeam }) {
           <thead className="bg-blue-950/80 text-blue-100">
             <tr>
               <th className="px-4 py-3 text-left">#</th>
-              <th className="px-4 py-3 text-left">Team Member</th>
-              <th className="px-4 py-3 text-right">Points</th>
+              <th className="px-4 py-3 text-left">{isGreek ? 'Μέλος Ομάδας' : 'Team Member'}</th>
+              <th className="px-4 py-3 text-right">{isGreek ? 'Πόντοι' : 'Points'}</th>
             </tr>
           </thead>
           <tbody>

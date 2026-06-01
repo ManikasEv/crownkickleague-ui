@@ -420,7 +420,7 @@ function DashboardContent() {
                 className="rounded-md border border-blue-700/70 px-3 py-2 text-sm text-blue-100 md:hidden"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
               >
-                {mobileMenuOpen ? 'Close' : 'Menu'}
+                {mobileMenuOpen ? (isGreek ? 'Κλείσιμο' : 'Close') : isGreek ? 'Μενού' : 'Menu'}
               </button>
               <h1 className="px-2 text-lg font-semibold text-white md:text-2xl">{currentTitle}</h1>
               <div className="flex items-center gap-2">
@@ -485,7 +485,7 @@ function DashboardContent() {
                       onClick={() => setRankingView('chooser')}
                       className="rounded-full border border-blue-400/70 bg-blue-600/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-100 hover:bg-blue-500/30"
                     >
-                      Back to ranking options
+                      {isGreek ? 'Επιστροφή στις επιλογές κατάταξης' : 'Back to ranking options'}
                     </button>
                   </div>
                 )}
@@ -495,7 +495,9 @@ function DashboardContent() {
                 )}
                 {activeTab === 'ranking' && rankingView === 'team' && teams.length === 0 && (
                   <section className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-6">
-                    <p className="text-blue-100/90">You are not in a team yet. Create one first.</p>
+                    <p className="text-blue-100/90">
+                      {isGreek ? 'Δεν είσαι ακόμα σε ομάδα. Δημιούργησε πρώτα μία.' : 'You are not in a team yet. Create one first.'}
+                    </p>
                   </section>
                 )}
                 {activeTab === 'guessing' && (
