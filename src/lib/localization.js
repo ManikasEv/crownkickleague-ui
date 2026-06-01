@@ -1,6 +1,33 @@
-export function isGreekLanguage() {
-  if (typeof navigator === 'undefined') return false
-  return String(navigator.language || '').toLowerCase().startsWith('el')
+const LANGUAGE_STORAGE_KEY = 'crownkick-language'
+
+export const AVAILABLE_LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'el', label: 'Ελληνικά' },
+]
+
+function normalizeLanguageCode(language) {
+  const value = String(language || '').toLowerCase()
+  if (value.startsWith('el')) return 'el'
+  return 'en'
+}
+
+export function getCurrentLanguage() {
+  if (typeof window !== 'undefined') {
+    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+    if (stored) return normalizeLanguageCode(stored)
+  }
+  if (typeof navigator === 'undefined') return 'en'
+  return normalizeLanguageCode(navigator.language)
+}
+
+export function setCurrentLanguage(language) {
+  if (typeof window === 'undefined') return
+  const normalized = normalizeLanguageCode(language)
+  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalized)
+}
+
+export function isGreekLanguage(language) {
+  return normalizeLanguageCode(language || getCurrentLanguage()) === 'el'
 }
 
 const COUNTRY_NAME_EL = {

@@ -14,6 +14,7 @@ import LiveScoreView from '../features/dashboard/views/LiveScoreView.jsx'
 import RankingHubView from '../features/dashboard/views/RankingHubView.jsx'
 import RulesView from '../features/dashboard/views/RulesView.jsx'
 import TeamRankingView from '../features/dashboard/views/TeamRankingView.jsx'
+import { AVAILABLE_LANGUAGES, getCurrentLanguage, isGreekLanguage, setCurrentLanguage } from '../lib/localization.js'
 
 const AUTO_LIVE_SYNC_MS = 30000
 const AUTO_GROUPS_REFRESH_MS = 45000
@@ -35,7 +36,8 @@ function toSafeErrorMessage(body, response) {
 
 function DashboardContent() {
   const { getToken, signOut } = useAuth()
-  const isGreek = typeof navigator !== 'undefined' && String(navigator.language || '').toLowerCase().startsWith('el')
+  const [language, setLanguage] = useState(() => getCurrentLanguage())
+  const isGreek = isGreekLanguage(language)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
@@ -134,6 +136,12 @@ function DashboardContent() {
     document.title = 'Dashboard | CrownKick League'
   }, [])
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = language
+    }
+  }, [language])
+
   function handleChangeTab(tabId) {
     setActiveTab(tabId)
     if (tabId === 'ranking') {
@@ -148,6 +156,11 @@ function DashboardContent() {
     if (tabId === 'winner-bonus' && !bonusData) {
       void loadWinnerBonus()
     }
+  }
+
+  function handleLanguageChange(nextLanguage) {
+    setCurrentLanguage(nextLanguage)
+    setLanguage(nextLanguage)
   }
 
   const loadGroupsStandings = useCallback(async () => {
@@ -410,9 +423,27 @@ function DashboardContent() {
                 {mobileMenuOpen ? 'Close' : 'Menu'}
               </button>
               <h1 className="px-2 text-lg font-semibold text-white md:text-2xl">{currentTitle}</h1>
-              <p className="max-w-[7.5rem] truncate text-right text-xs text-blue-100/80 md:max-w-none md:text-sm">
-                @{data?.user?.username || 'player'}
-              </p>
+              <div className="flex items-center gap-2">
+                <label htmlFor="language-switcher" className="sr-only">
+                  Language
+                </label>
+                <select
+                  id="language-switcher"
+                  value={language}
+                  onChange={(event) => handleLanguageChange(event.target.value)}
+                  className="rounded-md border border-blue-700/70 bg-slate-900/90 px-2 py-1 text-[11px] text-blue-100 outline-none focus:border-blue-400 md:text-xs"
+                  title={isGreek ? 'Γλώσσα' : 'Language'}
+                >
+                  {AVAILABLE_LANGUAGES.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="max-w-[7.5rem] truncate text-right text-xs text-blue-100/80 md:max-w-none md:text-sm">
+                  @{data?.user?.username || 'player'}
+                </p>
+              </div>
             </div>
           </header>
 
