@@ -2,8 +2,8 @@ import { useState } from 'react'
 
 import { getTeamFlagCode, getTeamFlagUrl } from '../../../lib/flags.js'
 
-function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSyncLive, onOpenBonus, syncingLive }) {
-  const [savingMatchId, setSavingMatchId] = useState(null)
+function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLive, onOpenBonus, syncingLive }) {
+  const [savingAll, setSavingAll] = useState(false)
   const [message, setMessage] = useState('')
   const matches = matchdayData?.matches || []
   const [drafts, setDrafts] = useState(() => {
@@ -11,7 +11,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
     matches.forEach((match) => {
       initial[match.id] = {
         mode: match.prediction?.predictionType ?? 'outcome',
-        outcome: match.prediction?.predictedOutcome ?? '1',
+        outcome: match.prediction?.predictedOutcome ?? '',
         home: match.prediction?.predictedHomeScore ?? '',
         away: match.prediction?.predictedAwayScore ?? '',
       }
@@ -70,29 +70,72 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
     }))
   }
 
-  async function handleSave(matchId, draft) {
-    setMessage('')
-    setSavingMatchId(matchId)
-    try {
-      if (draft.mode === 'outcome') {
-        await onSavePrediction({
-          matchId,
-          predictionType: 'outcome',
-          predictedOutcome: draft.outcome,
-        })
-      } else {
-        await onSavePrediction({
-          matchId,
-          predictionType: 'score',
-          predictedHomeScore: Number(draft.home || 0),
-          predictedAwayScore: Number(draft.away || 0),
-        })
+  function isValidScoreValue(value) {
+    if (value === '' || value === null || value === undefined) return false
+    const numeric = Number(value)
+    return Number.isFinite(numeric) && numeric >= 0
+  }
+
+  function buildPayload(match, draft) {
+    if (draft.mode === 'score') {
+      if (!isValidScoreValue(draft.home) || !isValidScoreValue(draft.away)) return null
+      return {
+        matchId: match.id,
+        predictionType: 'score',
+        predictedHomeScore: Number(draft.home),
+        predictedAwayScore: Number(draft.away),
       }
-      setMessage('Prediction saved.')
+    }
+    if (!['1', 'X', '2'].includes(draft.outcome)) return null
+    return {
+      matchId: match.id,
+      predictionType: 'outcome',
+      predictedOutcome: draft.outcome,
+    }
+  }
+
+  function isDraftDifferentFromPrediction(match, draft) {
+    const existing = match.prediction
+    if (!existing) {
+      return Boolean(buildPayload(match, draft))
+    }
+    if (draft.mode !== existing.predictionType) return true
+    if (draft.mode === 'outcome') return draft.outcome !== (existing.predictedOutcome ?? '')
+    return (
+      Number(draft.home) !== Number(existing.predictedHomeScore ?? NaN) ||
+      Number(draft.away) !== Number(existing.predictedAwayScore ?? NaN)
+    )
+  }
+
+  async function handleSaveAll() {
+    setMessage('')
+    setSavingAll(true)
+    try {
+      const payloads = matches
+        .filter((match) => {
+          const matchFinished = isFinished(match)
+          const disabled = Boolean(matchdayData?.locked || matchFinished)
+          if (disabled) return false
+          const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '', home: '', away: '' }
+          return isDraftDifferentFromPrediction(match, draft)
+        })
+        .map((match) => {
+          const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '', home: '', away: '' }
+          return buildPayload(match, draft)
+        })
+        .filter(Boolean)
+
+      if (payloads.length === 0) {
+        setMessage('No new changes to save for this matchday.')
+        return
+      }
+
+      const result = await onSaveMatchday(payloads)
+      setMessage(`Saved ${result?.savedCount ?? payloads.length} prediction(s) for this matchday.`)
     } catch (error) {
-      setMessage(error?.message || 'Failed to save prediction.')
+      setMessage(error?.message || 'Failed to save matchday predictions.')
     } finally {
-      setSavingMatchId(null)
+      setSavingAll(false)
     }
   }
 
@@ -137,6 +180,14 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
           className="rounded-full border border-violet-400/70 bg-violet-600/20 px-3 py-1 text-xs font-semibold text-violet-100 sm:text-sm"
         >
           Winner bonus
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveAll}
+          disabled={Boolean(matchdayData?.locked || savingAll)}
+          className="rounded-full border border-blue-300/80 bg-blue-600/30 px-3 py-1 text-xs font-semibold text-blue-100 disabled:opacity-40 sm:text-sm"
+        >
+          {savingAll ? 'Saving matchday...' : 'Save matchday predictions'}
         </button>
         <button
           type="button"
@@ -249,14 +300,6 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                     Points awarded: {Number(match.prediction?.pointsAwarded ?? 0)}
                   </p>
                 )}
-                <button
-                  type="button"
-                  disabled={savingMatchId === match.id || disableInputs}
-                  onClick={() => handleSave(match.id, draft)}
-                  className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
-                >
-                  {savingMatchId === match.id ? 'Saving...' : 'Save'}
-                </button>
               </div>
             </article>
           )
@@ -395,15 +438,8 @@ function GuessingView({ matchdayData, onChangeMatchday, onSavePrediction, onSync
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-right">
-                    <button
-                      type="button"
-                      disabled={savingMatchId === match.id || disableInputs}
-                      onClick={() => handleSave(match.id, draft)}
-                      className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
-                    >
-                      {savingMatchId === match.id ? 'Saving...' : 'Save'}
-                    </button>
+                  <td className="px-3 py-3 text-right text-xs text-blue-200/80">
+                    Matchday save
                   </td>
                 </tr>
               )

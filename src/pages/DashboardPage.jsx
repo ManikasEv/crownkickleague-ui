@@ -231,15 +231,30 @@ function DashboardContent() {
     return () => clearInterval(intervalId)
   }, [activeTab, loadGroupsStandings])
 
-  async function handleSavePrediction(payload) {
+  async function handleSaveMatchdayPredictions(payloads) {
+    if (!Array.isArray(payloads) || payloads.length === 0) {
+      return { savedCount: 0, failedCount: 0 }
+    }
+
     setActionError('')
-    await fetchWithAuth('/api/guessing/predictions', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
+    const results = await Promise.allSettled(
+      payloads.map((payload) =>
+        fetchWithAuth('/api/guessing/predictions', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }),
+      ),
+    )
+
+    const savedCount = results.filter((item) => item.status === 'fulfilled').length
+    const failedCount = results.length - savedCount
 
     const guessingBody = await fetchWithAuth(`/api/guessing/matches?matchday=${guessingData.matchday}`)
     applyGuessingBody(guessingBody)
+    if (failedCount > 0) {
+      throw new Error(`Saved ${savedCount} prediction(s), but ${failedCount} failed. Please retry.`)
+    }
+    return { savedCount, failedCount }
   }
 
   async function handleChangeGuessingMatchday(nextDay) {
@@ -440,7 +455,7 @@ function DashboardContent() {
                     key={guessingViewKey}
                     matchdayData={guessingData}
                     onChangeMatchday={handleChangeGuessingMatchday}
-                    onSavePrediction={handleSavePrediction}
+                    onSaveMatchday={handleSaveMatchdayPredictions}
                     onSyncLive={handleSyncLiveMatches}
                     onOpenBonus={() => handleChangeTab('winner-bonus')}
                     syncingLive={syncingLive}
