@@ -122,7 +122,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
   function getPendingChangesCount() {
     return matches.filter((match) => {
       const matchFinished = isFinished(match)
-      const disabled = Boolean(matchdayData?.locked || matchFinished)
+      const disabled = Boolean(match.locked || matchFinished)
       if (disabled) return false
       const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '', home: '', away: '' }
       return isDraftDifferentFromPrediction(match, draft) && Boolean(buildPayload(match, draft))
@@ -137,7 +137,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
       const payloads = matches
         .filter((match) => {
           const matchFinished = isFinished(match)
-          const disabled = Boolean(matchdayData?.locked || matchFinished)
+          const disabled = Boolean(match.locked || matchFinished)
           if (disabled) return false
           const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '', home: '', away: '' }
           return isDraftDifferentFromPrediction(match, draft)
@@ -185,18 +185,17 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
           </>
         )}
       </p>
-      {matchdayData?.locked ? (
-        <p className="mt-2 text-sm text-red-300">
-          {isGreek
-            ? 'Η αγωνιστική κλείδωσε: οι προβλέψεις κλείνουν 3 ώρες πριν την πρώτη σέντρα.'
-            : 'Matchday locked: predictions closed 3 hours before first kickoff.'}
-        </p>
-      ) : (
-        <p className="mt-2 text-xs text-blue-100/70">
-          {isGreek ? 'Η επεξεργασία κλείνει:' : 'Editing closes at:'}{' '}
-          {matchdayData?.lockAt ? new Date(matchdayData.lockAt).toLocaleString() : isGreek ? 'N/A' : 'N/A'}
-        </p>
-      )}
+      <p className="mt-2 text-xs text-blue-100/70">
+        {isGreek
+          ? 'Κάθε αγώνας κλειδώνει 1 ώρα πριν τη σέντρα. Μπορείς να αλλάξεις μόνο όσους δεν έχουν κλειδώσει.'
+          : 'Each match locks 1 hour before kickoff. You can edit only matches that are not locked yet.'}
+        {matchdayData?.lockAt ? (
+          <>
+            {' '}
+            {isGreek ? 'Επόμενο κλείδωμα:' : 'Next lock:'} {new Date(matchdayData.lockAt).toLocaleString()}
+          </>
+        ) : null}
+      </p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -227,7 +226,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
         <button
           type="button"
           onClick={handleSaveAll}
-          disabled={Boolean(matchdayData?.locked || savingAll)}
+          disabled={Boolean(savingAll)}
           className={`rounded-full border px-3 py-1 text-xs font-semibold text-blue-100 transition duration-200 active:scale-95 disabled:opacity-40 sm:text-sm ${
             savingAll
               ? 'animate-pulse border-cyan-300/80 bg-cyan-500/40 shadow-[0_0_0_2px_rgba(34,211,238,0.25)]'
@@ -271,7 +270,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
         {matches.map((match) => {
           const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '1', home: '', away: '' }
           const matchFinished = isFinished(match)
-          const disableInputs = Boolean(matchdayData?.locked || matchFinished)
+          const disableInputs = Boolean(match.locked || matchFinished)
           return (
             <article
               key={match.id}
@@ -295,6 +294,11 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
               </div>
               <p className="mt-1 text-xs text-blue-100/80">{formatKickoff(match.kickoffAt)}</p>
               <p className="text-xs capitalize">{formatStatus(match.status)}</p>
+              {match.locked && !matchFinished && (
+                <p className="mt-1 text-[11px] text-amber-300">
+                  {isGreek ? 'Ο αγώνας κλείδωσε για επεξεργασία.' : 'This match is locked for edits.'}
+                </p>
+              )}
               {match.homeScore !== null && match.awayScore !== null && (
                 <p className="mt-1 text-xs text-emerald-300">
                   {matchFinished ? (isGreek ? 'Τελικό' : 'Final') : isGreek ? 'Ζωντανά' : 'Live'}: {match.homeScore} - {match.awayScore}
@@ -396,7 +400,7 @@ function GuessingView({ matchdayData, onChangeMatchday, onSaveMatchday, onSyncLi
             {matches.map((match) => {
               const draft = drafts[match.id] ?? { mode: 'outcome', outcome: '1', home: '', away: '' }
               const matchFinished = isFinished(match)
-              const disableInputs = Boolean(matchdayData?.locked || matchFinished)
+              const disableInputs = Boolean(match.locked || matchFinished)
               return (
                 <tr
                   key={match.id}
