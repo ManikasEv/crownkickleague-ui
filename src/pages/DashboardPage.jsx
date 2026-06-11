@@ -16,7 +16,6 @@ import RulesView from '../features/dashboard/views/RulesView.jsx'
 import TeamRankingView from '../features/dashboard/views/TeamRankingView.jsx'
 import { AVAILABLE_LANGUAGES, getCurrentLanguage, isGreekLanguage, setCurrentLanguage } from '../lib/localization.js'
 
-const AUTO_LIVE_SYNC_MS = 30000
 const AUTO_GROUPS_REFRESH_MS = 45000
 const AUTO_LIVESCORE_REFRESH_MS = 20000
 
@@ -72,7 +71,7 @@ function DashboardContent() {
       maxMatchday: guessingBody.maxMatchday || 1,
       matches: nextMatches,
     })
-    setGuessingViewKey(`${nextMatchday}:${Date.now()}`)
+    setGuessingViewKey(`${nextMatchday}`)
   }, [])
 
   const fetchWithAuth = useCallback(async (path, init = {}) => {
@@ -211,15 +210,6 @@ function DashboardContent() {
       liveSyncInFlightRef.current = false
     }
   }, [applyGuessingBody, fetchWithAuth, guessingData.matchday])
-
-  useEffect(() => {
-    if (activeTab !== 'guessing') return
-    void syncLiveSilently()
-    const intervalId = setInterval(() => {
-      void syncLiveSilently()
-    }, AUTO_LIVE_SYNC_MS)
-    return () => clearInterval(intervalId)
-  }, [activeTab, syncLiveSilently])
 
   useEffect(() => {
     if (activeTab !== 'livescore') return
